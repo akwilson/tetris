@@ -6,7 +6,6 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 #define CELL_SIZE 25
-#define M_SIZE 4
 
 // The window we'll be rendering to
 static SDL_Window *window;
@@ -71,89 +70,16 @@ static void close()
     SDL_Quit();
 }
 
-// == MATRIX ROT ===========================
-
-static void swap(int *a, int *b)
-{
-    int tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
-
-static void transpose_square(int matrix[M_SIZE][M_SIZE])
-{
-    for (int y = 0; y < M_SIZE; y++)
-    {
-        for (int x = y + 1; x < M_SIZE; x++)
-        {
-            swap(&matrix[x][y], &matrix[y][x]);
-        }
-    }
-}
-
-static void reverse_rows(int matrix[M_SIZE][M_SIZE])
-{
-    for (int y = 0; y < M_SIZE; y++)
-    {
-        for (int x = 0; x < M_SIZE / 2; x++)
-        {
-            swap(&matrix[y][x], &matrix[y][M_SIZE - 1 - x]);
-        }
-    }
-}
-
-static void reverse_cols(int matrix[M_SIZE][M_SIZE])
-{
-    for (int y = 0; y < M_SIZE / 2; y++)
-    {
-        for (int x = 0; x < M_SIZE; x++)
-        {
-            swap(&matrix[y][x], &matrix[M_SIZE - 1 - y][x]);
-        }
-    }
-}
-
-/**
- * @brief Rotates a matrix in place
- * 
- * @param matrix an N by N matrix
- * @param r rotation mode: 0 - 90; 1 - 180; 2 - 270
- * 
- * @see https://stackoverflow.com/a/8664879
- */
-static void rotate(int matrix[M_SIZE][M_SIZE], int r)
-{
-    switch (r)
-    {
-    case 0: /* 90 degrees */
-        transpose_square(matrix);
-        reverse_rows(matrix);
-        break;
-    case 1: /* 180 degrees */
-        reverse_rows(matrix);
-        reverse_cols(matrix);
-        break;
-    case 2: /* 270 degrees */
-        reverse_rows(matrix);
-        transpose_square(matrix);
-        break;
-    default:
-        break;
-    }
-}
-
 // == GAME ==================================
 
-static int is_position_valid(shape *shape, int newX, int newY)
+static int is_position_valid(tetronimo tetronimo, int newX, int newY)
 {
     int drawX, drawY;
-    tetronimo *c_tet = &tetronimos[shape->tetronimo];
-
-    for (int i = 0; i < M_SIZE; i++)
+    for (int i = 0; i < MATRIX_SIZE; i++)
     {
-        for (int j = 0; j < M_SIZE; j++)
+        for (int j = 0; j < MATRIX_SIZE; j++)
         {
-            if ((*c_tet)[i][j])
+            if (tetronimo[i][j])
             {
                 drawX = newX + (j * CELL_SIZE);
                 drawY = newY + (i * CELL_SIZE);
@@ -170,29 +96,28 @@ static int is_position_valid(shape *shape, int newX, int newY)
 
 static void handle_keys(SDL_Keycode key_code, shape *shape)
 {
-    tetronimo *c_tet = &tetronimos[shape->tetronimo];
-
+    tetronimo *c_tet = LOOKUP_TETRONIMO(shape->tetronimo);
     switch (key_code)
     {
     case SDLK_DOWN:
-        shape->y += is_position_valid(shape, shape->x, shape->y + CELL_SIZE) ? CELL_SIZE : 0;
+        shape->y += is_position_valid(*c_tet, shape->x, shape->y + CELL_SIZE) ? CELL_SIZE : 0;
         break;
     case SDLK_LEFT:
-        shape->x -= is_position_valid(shape, shape->x - CELL_SIZE, shape->y) ? CELL_SIZE : 0;
+        shape->x -= is_position_valid(*c_tet, shape->x - CELL_SIZE, shape->y) ? CELL_SIZE : 0;
         break;
     case SDLK_RIGHT:
-        shape->x += is_position_valid(shape, shape->x + CELL_SIZE, shape->y) ? CELL_SIZE : 0;
+        shape->x += is_position_valid(*c_tet, shape->x + CELL_SIZE, shape->y) ? CELL_SIZE : 0;
         break;
     case SDLK_x:
         rotate(*c_tet, 0);
-        if (!is_position_valid(shape, shape->x, shape->y))
+        if (!is_position_valid(*c_tet, shape->x, shape->y))
         {
             rotate(*c_tet, 2);
         }
         break;
     case SDLK_z:
         rotate(*c_tet, 2);
-        if (!is_position_valid(shape, shape->x, shape->y))
+        if (!is_position_valid(*c_tet, shape->x, shape->y))
         {
             rotate(*c_tet, 0);
         }
@@ -203,11 +128,11 @@ static void handle_keys(SDL_Keycode key_code, shape *shape)
 static void render_shape(shape *shape)
 {
     int drawX, drawY;
-    tetronimo *c_tet = &tetronimos[shape->tetronimo];
+    tetronimo *c_tet = LOOKUP_TETRONIMO(shape->tetronimo);
 
-    for (int i = 0; i < M_SIZE; i++)
+    for (int i = 0; i < MATRIX_SIZE; i++)
     {
-        for (int j = 0; j < M_SIZE; j++)
+        for (int j = 0; j < MATRIX_SIZE; j++)
         {
             if ((*c_tet)[i][j])
             {
@@ -221,7 +146,7 @@ static void render_shape(shape *shape)
     }
 }
 
-int main(int argc, char* argv[])
+int main()
 {
     if (init())
     {

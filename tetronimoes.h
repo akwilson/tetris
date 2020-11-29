@@ -1,39 +1,14 @@
 #ifndef TETRONIMOES_H
 #define TETRONIMOES_H
 
-typedef int tetronimo[4][4];
+#define MATRIX_SIZE 4
 
-tetronimo tetronimos[5] = {
-    {
-        { 0, 1, 0, 0 },
-        { 0, 1, 0, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 0, 0 }
-    },
-    {
-        { 0, 0, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 1, 0 }
-    },
-    {
-        { 0, 0, 0, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 0, 0 }
-    },
-    {
-        { 0, 0, 1, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 0, 0 }
-    },
-    {
-        { 0, 1, 0, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 0, 0 }
-    }
-};
+typedef int tetronimo[MATRIX_SIZE][MATRIX_SIZE];
+
+tetronimo tetronimoes[5];
+
+#define LOOKUP_TETRONIMO(x) &tetronimoes[x]
+
+void rotate(tetronimo tetronimo, int r);
 
 #endif
