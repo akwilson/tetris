@@ -20,10 +20,18 @@ static SDL_Window *window;
 // The renderer to draw the texture on the window
 static SDL_Renderer *renderer;
 
+typedef enum color
+{
+    RED = 1,
+    GREEN,
+    BLUE,
+    YELLOW
+} color;
+
 typedef struct shape
 {
     int tetronimo; // index to the tetronimoes list
-    int color;     // index to the color array
+    color color;     // index to the color array
     int x;         // x pixel position relative to the top left of the grid
     int y;         // y pixel position relative to the top left of the grid
 } shape;
@@ -81,6 +89,25 @@ static void close()
     SDL_Quit();
 }
 
+static void set_color(color color)
+{
+    switch (color)
+    {
+    case RED:
+        SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+        break;
+    case GREEN:
+        SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF);
+        break;
+    case BLUE:
+        SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xFF, 0xFF);
+        break;
+    case YELLOW:
+        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0x00, 0xFF);
+        break;
+    }
+}
+
 // == GAME ==================================
 
 static void render_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
@@ -99,7 +126,7 @@ static void render_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
                 drawX = GRID_X_OFFSET + (j * CELL_SIZE);
                 drawY = GRID_Y_OFFSET + (i * CELL_SIZE);
                 SDL_Rect fillRect = { drawX, drawY, CELL_SIZE, CELL_SIZE };
-                SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+                set_color(grid[i][j]);
                 SDL_RenderFillRect(renderer, &fillRect);
             }
         }
@@ -182,7 +209,7 @@ static void render_shape(shape *shape)
                 drawX = shape->x + (j * CELL_SIZE);
                 drawY = shape->y + (i * CELL_SIZE);
                 SDL_Rect fillRect = { drawX, drawY, CELL_SIZE, CELL_SIZE };
-                SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+                set_color(shape->color);
                 SDL_RenderFillRect(renderer, &fillRect);
             }
         }
@@ -202,7 +229,7 @@ static void add_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shap
             {
                 grid_x = CONVERT_TO_X_GRID(shape->x + (j * CELL_SIZE));
                 grid_y = CONVERT_TO_Y_GRID(shape->y + (i * CELL_SIZE));
-                grid[grid_y][grid_x] = 1;
+                grid[grid_y][grid_x] = shape->color;
             }
         }
     }
@@ -211,7 +238,7 @@ static void add_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shap
 static void reset_shape(shape* shape)
 {
     shape->tetronimo = rand() % NUM_TETRONIMOES;
-    shape->color = 0;
+    shape->color = (rand() % YELLOW) + 1;
     shape->x = (GRID_WIDTH / 2) + GRID_X_OFFSET;
     shape->y = GRID_Y_OFFSET;
 }
