@@ -20,7 +20,6 @@ typedef struct shape
     int color;
     int x;
     int y;
-    int rot;
 } shape;
 
 // == SDL STUFF ======================================
@@ -38,7 +37,8 @@ static int init()
     }
 
     // Create window
-    window = SDL_CreateWindow("Hello World", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("Tetris", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                              SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (!window)
     {
         fprintf(stderr, "Window could not be created. SDL_Error: %s\n", SDL_GetError());
@@ -72,7 +72,6 @@ static void close()
 }
 
 // == MATRIX ROT ===========================
-
 
 static void swap(int *a, int *b)
 {
@@ -145,7 +144,7 @@ static void rotate(int matrix[M_SIZE][M_SIZE], int r)
 
 // == GAME ==================================
 
-static int is_position_valid(shape *shape, int newX, int newY, int newRot)
+static int is_position_valid(shape *shape, int newX, int newY)
 {
     int drawX, drawY;
     tetronimo *c_tet = &tetronimos[shape->tetronimo];
@@ -171,22 +170,32 @@ static int is_position_valid(shape *shape, int newX, int newY, int newRot)
 
 static void handle_keys(SDL_Keycode key_code, shape *shape)
 {
+    tetronimo *c_tet = &tetronimos[shape->tetronimo];
+
     switch (key_code)
     {
     case SDLK_DOWN:
-        shape->y += is_position_valid(shape, shape->x, shape->y + CELL_SIZE, shape->rot) ? CELL_SIZE : 0;
+        shape->y += is_position_valid(shape, shape->x, shape->y + CELL_SIZE) ? CELL_SIZE : 0;
         break;
     case SDLK_LEFT:
-        shape->x -= is_position_valid(shape, shape->x - CELL_SIZE, shape->y, shape->rot) ? CELL_SIZE : 0;
+        shape->x -= is_position_valid(shape, shape->x - CELL_SIZE, shape->y) ? CELL_SIZE : 0;
         break;
     case SDLK_RIGHT:
-        shape->x += is_position_valid(shape, shape->x + CELL_SIZE, shape->y, shape->rot) ? CELL_SIZE : 0;
-        break;
-    case SDLK_z:
-        shape->rot--;
+        shape->x += is_position_valid(shape, shape->x + CELL_SIZE, shape->y) ? CELL_SIZE : 0;
         break;
     case SDLK_x:
-        shape->rot += is_position_valid(shape, shape->x, shape->y, shape->rot + 1) ? CELL_SIZE : 0;
+        rotate(*c_tet, 0);
+        if (!is_position_valid(shape, shape->x, shape->y))
+        {
+            rotate(*c_tet, 2);
+        }
+        break;
+    case SDLK_z:
+        rotate(*c_tet, 2);
+        if (!is_position_valid(shape, shape->x, shape->y))
+        {
+            rotate(*c_tet, 0);
+        }
         break;
     }
 }
@@ -219,7 +228,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    shape shape;
+    shape shape = { 0 };
     shape.x = SCREEN_WIDTH / 4;
     SDL_Event e;
     int quit = 0;
