@@ -6,6 +6,12 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 #define CELL_SIZE 25
+#define GRID_X_OFFSET 25
+#define GRID_Y_OFFSET 25
+#define GRID_CELL_WIDTH 12
+#define GRID_CELL_HEIGHT 18
+#define GRID_WIDTH GRID_CELL_WIDTH * CELL_SIZE
+#define GRID_HEIGHT GRID_CELL_HEIGHT * CELL_SIZE
 
 // The window we'll be rendering to
 static SDL_Window *window;
@@ -20,6 +26,8 @@ typedef struct shape
     int x;
     int y;
 } shape;
+
+static int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH] = {0};
 
 // == SDL STUFF ======================================
 
@@ -72,6 +80,20 @@ static void close()
 
 // == GAME ==================================
 
+static void draw_grid()
+{
+    SDL_Rect outline = { GRID_X_OFFSET, GRID_Y_OFFSET, GRID_WIDTH, GRID_HEIGHT };
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+    SDL_RenderDrawRect(renderer, &outline);
+}
+
+static int is_out_of_bounds(int x, int y)
+{
+    return (x + CELL_SIZE - GRID_X_OFFSET > GRID_WIDTH ||
+            x < GRID_X_OFFSET ||
+            y + CELL_SIZE - GRID_Y_OFFSET > GRID_HEIGHT);
+}
+
 static int is_position_valid(tetronimo tetronimo, int newX, int newY)
 {
     int drawX, drawY;
@@ -83,7 +105,7 @@ static int is_position_valid(tetronimo tetronimo, int newX, int newY)
             {
                 drawX = newX + (j * CELL_SIZE);
                 drawY = newY + (i * CELL_SIZE);
-                if (drawX + CELL_SIZE > SCREEN_WIDTH || drawX < 0 || drawY + CELL_SIZE > SCREEN_HEIGHT)
+                if (is_out_of_bounds(drawX, drawY))
                 {
                     return 0;
                 }
@@ -154,7 +176,8 @@ int main()
     }
 
     shape shape = { 0 };
-    shape.x = SCREEN_WIDTH / 4;
+    shape.x = (GRID_WIDTH / 2) + GRID_X_OFFSET;
+    shape.y = GRID_Y_OFFSET;
     SDL_Event e;
     int quit = 0;
     while (!quit)
@@ -176,6 +199,7 @@ int main()
         SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
         SDL_RenderClear(renderer);
 
+        draw_grid();
         render_shape(&shape);
 
         // Update screen
