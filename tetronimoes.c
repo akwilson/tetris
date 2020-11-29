@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include "tetronimoes.h"
 
-tetronimo tetronimoes[5] = {
+tetronimo tetronimoes[NUM_TETRONIMOES] = {
     {
         { 0, 1, 0, 0 },
         { 0, 1, 0, 0 },

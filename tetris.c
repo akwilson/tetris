@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <time.h>
 #include <SDL2/SDL.h>
 
 #include "tetronimoes.h"
@@ -21,13 +22,15 @@ static SDL_Renderer *renderer;
 
 typedef struct shape
 {
-    int tetronimo;
-    int color;
-    int x;
-    int y;
+    int tetronimo; // index to the tetronimoes list
+    int color;     // index to the color array
+    int x;         // x pixel position relative to the top left of the grid
+    int y;         // y pixel position relative to the top left of the grid
 } shape;
 
-static int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH] = {0};
+// Macros to convert pixel positions to positions in the grid array
+#define CONVERT_TO_X_GRID(x) (x - GRID_X_OFFSET) / CELL_SIZE
+#define CONVERT_TO_Y_GRID(y) (y - GRID_Y_OFFSET) / CELL_SIZE
 
 // == SDL STUFF ======================================
 
@@ -80,11 +83,27 @@ static void close()
 
 // == GAME ==================================
 
-static void draw_grid()
+static void render_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
 {
     SDL_Rect outline = { GRID_X_OFFSET, GRID_Y_OFFSET, GRID_WIDTH, GRID_HEIGHT };
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
     SDL_RenderDrawRect(renderer, &outline);
+
+    int drawX, drawY;
+    for (int i = 0; i < GRID_CELL_HEIGHT; i++)
+    {
+        for (int j = 0; j < GRID_CELL_WIDTH; j++)
+        {
+            if (grid[i][j])
+            {
+                drawX = GRID_X_OFFSET + (j * CELL_SIZE);
+                drawY = GRID_Y_OFFSET + (i * CELL_SIZE);
+                SDL_Rect fillRect = { drawX, drawY, CELL_SIZE, CELL_SIZE };
+                SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+                SDL_RenderFillRect(renderer, &fillRect);
+            }
+        }
+    }
 }
 
 static int is_out_of_bounds(int x, int y)
@@ -94,9 +113,9 @@ static int is_out_of_bounds(int x, int y)
             y + CELL_SIZE - GRID_Y_OFFSET > GRID_HEIGHT);
 }
 
-static int is_position_valid(tetronimo tetronimo, int newX, int newY)
+static int is_position_valid(tetronimo tetronimo, int newX, int newY, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
 {
-    int drawX, drawY;
+    int drawX, drawY, grid_x, grid_y;
     for (int i = 0; i < MATRIX_SIZE; i++)
     {
         for (int j = 0; j < MATRIX_SIZE; j++)
@@ -105,7 +124,9 @@ static int is_position_valid(tetronimo tetronimo, int newX, int newY)
             {
                 drawX = newX + (j * CELL_SIZE);
                 drawY = newY + (i * CELL_SIZE);
-                if (is_out_of_bounds(drawX, drawY))
+                grid_x = CONVERT_TO_X_GRID(drawX);
+                grid_y = CONVERT_TO_Y_GRID(drawY);
+                if (is_out_of_bounds(drawX, drawY) || grid[grid_y][grid_x])
                 {
                     return 0;
                 }
@@ -116,30 +137,30 @@ static int is_position_valid(tetronimo tetronimo, int newX, int newY)
     return 1;
 }
 
-static void handle_keys(SDL_Keycode key_code, shape *shape)
+static void handle_keys(SDL_Keycode key_code, shape *shape, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
 {
     tetronimo *c_tet = LOOKUP_TETRONIMO(shape->tetronimo);
     switch (key_code)
     {
     case SDLK_DOWN:
-        shape->y += is_position_valid(*c_tet, shape->x, shape->y + CELL_SIZE) ? CELL_SIZE : 0;
+        shape->y += is_position_valid(*c_tet, shape->x, shape->y + CELL_SIZE, grid) ? CELL_SIZE : 0;
         break;
     case SDLK_LEFT:
-        shape->x -= is_position_valid(*c_tet, shape->x - CELL_SIZE, shape->y) ? CELL_SIZE : 0;
+        shape->x -= is_position_valid(*c_tet, shape->x - CELL_SIZE, shape->y, grid) ? CELL_SIZE : 0;
         break;
     case SDLK_RIGHT:
-        shape->x += is_position_valid(*c_tet, shape->x + CELL_SIZE, shape->y) ? CELL_SIZE : 0;
+        shape->x += is_position_valid(*c_tet, shape->x + CELL_SIZE, shape->y, grid) ? CELL_SIZE : 0;
         break;
     case SDLK_x:
         rotate(*c_tet, 0);
-        if (!is_position_valid(*c_tet, shape->x, shape->y))
+        if (!is_position_valid(*c_tet, shape->x, shape->y, grid))
         {
             rotate(*c_tet, 2);
         }
         break;
     case SDLK_z:
         rotate(*c_tet, 2);
-        if (!is_position_valid(*c_tet, shape->x, shape->y))
+        if (!is_position_valid(*c_tet, shape->x, shape->y, grid))
         {
             rotate(*c_tet, 0);
         }
@@ -168,6 +189,33 @@ static void render_shape(shape *shape)
     }
 }
 
+static void add_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shape)
+{
+    int grid_x, grid_y;
+    tetronimo *c_tet = LOOKUP_TETRONIMO(shape->tetronimo);
+
+    for (int i = 0; i < MATRIX_SIZE; i++)
+    {
+        for (int j = 0; j < MATRIX_SIZE; j++)
+        {
+            if ((*c_tet)[i][j])
+            {
+                grid_x = CONVERT_TO_X_GRID(shape->x + (j * CELL_SIZE));
+                grid_y = CONVERT_TO_Y_GRID(shape->y + (i * CELL_SIZE));
+                grid[grid_y][grid_x] = 1;
+            }
+        }
+    }
+}
+
+static void reset_shape(shape* shape)
+{
+    shape->tetronimo = rand() % NUM_TETRONIMOES;
+    shape->color = 0;
+    shape->x = (GRID_WIDTH / 2) + GRID_X_OFFSET;
+    shape->y = GRID_Y_OFFSET;
+}
+
 int main()
 {
     if (init())
@@ -175,13 +223,18 @@ int main()
         return 1;
     }
 
-    shape shape = { 0 };
-    shape.x = (GRID_WIDTH / 2) + GRID_X_OFFSET;
-    shape.y = GRID_Y_OFFSET;
+    srand(time(0));
+
+    int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH] = {0};
+    shape shape;
+    reset_shape(&shape);
     SDL_Event e;
     int quit = 0;
+    int speed = 500;
+    int loopCnt = 0;
     while (!quit)
     {
+        ++loopCnt;
         while (SDL_PollEvent(&e))
         {
             switch (e.type)
@@ -190,8 +243,24 @@ int main()
                 quit = 1;
                 break;
             case SDL_KEYDOWN:
-                handle_keys(e.key.keysym.sym, &shape);
+                handle_keys(e.key.keysym.sym, &shape, grid);
                 break;
+            }
+        }
+
+        // Force tetronimo down after a time
+        if (loopCnt == speed)
+        {
+            loopCnt = 0;
+            tetronimo *c_tet = LOOKUP_TETRONIMO(shape.tetronimo);
+            if (is_position_valid(*c_tet, shape.x, shape.y + CELL_SIZE, grid))
+            {
+                shape.y += CELL_SIZE;
+            }
+            else
+            {
+                add_to_grid(grid, &shape);
+                reset_shape(&shape);
             }
         }
 
@@ -199,7 +268,7 @@ int main()
         SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
         SDL_RenderClear(renderer);
 
-        draw_grid();
+        render_grid(grid);
         render_shape(&shape);
 
         // Update screen
