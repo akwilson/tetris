@@ -45,7 +45,7 @@ static void swap(int *a, int *b)
     *b = tmp;
 }
 
-void transpose_square(tetronimo tetronimo)
+static void transpose_square(tetronimo tetronimo)
 {
     for (int y = 0; y < MATRIX_SIZE; y++)
     {
