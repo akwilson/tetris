@@ -22,10 +22,11 @@ static SDL_Renderer *renderer;
 
 typedef enum color
 {
-    RED = 1,
+    PURPLE = 1,
     GREEN,
     BLUE,
-    YELLOW
+    YELLOW,
+    RED
 } color;
 
 /**
@@ -96,8 +97,8 @@ static void set_render_color(color color)
 {
     switch (color)
     {
-    case RED:
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+    case PURPLE:
+        SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0xFF, 0xFF);
         break;
     case GREEN:
         SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF);
@@ -107,6 +108,9 @@ static void set_render_color(color color)
         break;
     case YELLOW:
         SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0x00, 0xFF);
+        break;
+    case RED:
+        SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
         break;
     }
 }
@@ -320,9 +324,10 @@ int main()
     int quit = 0;
     int speed = 500;
     int loopCnt = 0;
+    int running = 1;
     while (!quit)
     {
-        ++loopCnt;
+        loopCnt += running;
         while (SDL_PollEvent(&e))
         {
             switch (e.type)
@@ -331,7 +336,10 @@ int main()
                 quit = 1;
                 break;
             case SDL_KEYDOWN:
-                handle_keys(e.key.keysym.sym, &shape, grid);
+                if (running)
+                {
+                    handle_keys(e.key.keysym.sym, &shape, grid);
+                }
                 break;
             }
         }
@@ -349,6 +357,11 @@ int main()
             {
                 add_to_grid(grid, &shape);
                 reset_shape(&shape);
+                if (!is_position_valid(*c_tet, shape.x, shape.y, grid))
+                {
+                    shape.color = RED;
+                    running = 0;
+                }
             }
         }
 
