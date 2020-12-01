@@ -4,12 +4,33 @@
 #define MATRIX_SIZE 4
 #define NUM_TETRONIMOES 5
 
-typedef int tetronimo[MATRIX_SIZE][MATRIX_SIZE];
+typedef enum direction
+{
+    NONE = -1, // tetronimo cannot be rotated
+    UP,
+    RIGHT,
+    DOWN,
+    LEFT
+} direction;
+
+typedef enum rotation
+{
+    NINETY_DEGREES = 1,
+    ONE_EIGHTY_DEGREES,
+    TWO_SEVENTY_DEGREES
+} rotation;
+
+/**
+ * A tetris piece.
+ */
+typedef struct tetronimo
+{
+    int matrix[MATRIX_SIZE][MATRIX_SIZE]; // The shape of the tetronimo
+    direction direction;                  // The tetronimo's current direction
+} tetronimo;
 
 tetronimo tetronimoes[NUM_TETRONIMOES];
 
-#define LOOKUP_TETRONIMO(x) &tetronimoes[x]
-
-void rotate(tetronimo tetronimo, int r);
+void rotate(tetronimo *tetronimo, rotation rotation);
 
 #endif

@@ -7,34 +7,49 @@
 
 tetronimo tetronimoes[NUM_TETRONIMOES] = {
     {
-        { 0, 1, 0, 0 },
-        { 0, 1, 0, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 0, 0 }
+        {
+            { 0, 1, 0, 0 },
+            { 0, 1, 0, 0 },
+            { 0, 1, 1, 0 },
+            { 0, 0, 0, 0 }
+        },
+        UP
     },
     {
-        { 0, 0, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 1, 0 }
+        {
+            { 0, 0, 1, 0 },
+            { 0, 0, 1, 0 },
+            { 0, 0, 1, 0 },
+            { 0, 0, 1, 0 }
+        },
+        UP
     },
     {
-        { 0, 0, 0, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 0, 0 }
+        {
+            { 0, 1, 1, 0 },
+            { 0, 1, 1, 0 },
+            { 0, 0, 0, 0 },
+            { 0, 0, 0, 0 }
+        },
+        NONE
     },
     {
-        { 0, 0, 1, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 0, 0 }
+        {
+            { 0, 0, 1, 0 },
+            { 0, 1, 1, 0 },
+            { 0, 0, 1, 0 },
+            { 0, 0, 0, 0 }
+        },
+        UP
     },
     {
-        { 0, 1, 0, 0 },
-        { 0, 1, 1, 0 },
-        { 0, 0, 1, 0 },
-        { 0, 0, 0, 0 }
+        {
+            { 0, 1, 0, 0 },
+            { 0, 1, 1, 0 },
+            { 0, 0, 1, 0 },
+            { 0, 0, 0, 0 }
+        },
+        UP
     }
 };
 
@@ -45,64 +60,68 @@ static void swap(int *a, int *b)
     *b = tmp;
 }
 
-static void transpose_square(tetronimo tetronimo)
+static void transpose_square(int matrix[MATRIX_SIZE][MATRIX_SIZE])
 {
     for (int y = 0; y < MATRIX_SIZE; y++)
     {
         for (int x = y + 1; x < MATRIX_SIZE; x++)
         {
-            swap(&tetronimo[x][y], &tetronimo[y][x]);
+            swap(&matrix[x][y], &matrix[y][x]);
         }
     }
 }
 
-static void reverse_rows(tetronimo tetronimo)
+static void reverse_rows(int matrix[MATRIX_SIZE][MATRIX_SIZE])
 {
     for (int y = 0; y < MATRIX_SIZE; y++)
     {
         for (int x = 0; x < MATRIX_SIZE / 2; x++)
         {
-            swap(&tetronimo[y][x], &tetronimo[y][MATRIX_SIZE - 1 - x]);
+            swap(&matrix[y][x], &matrix[y][MATRIX_SIZE - 1 - x]);
         }
     }
 }
 
-static void reverse_cols(tetronimo tetronimo)
+static void reverse_cols(int matrix[MATRIX_SIZE][MATRIX_SIZE])
 {
     for (int y = 0; y < MATRIX_SIZE / 2; y++)
     {
         for (int x = 0; x < MATRIX_SIZE; x++)
         {
-            swap(&tetronimo[y][x], &tetronimo[MATRIX_SIZE - 1 - y][x]);
+            swap(&matrix[y][x], &matrix[MATRIX_SIZE - 1 - y][x]);
         }
     }
 }
 
 /**
- * @brief Rotates a matrix in place
- * 
- * @param tetronimo a tetronimo, aka an MATRIX_SIZE x MATRIX_SIZE matrix
- * @param r rotation mode: 0 - 90; 1 - 180; 2 - 270
+ * @brief Rotates a tetronimo and maintains a record if its direction
  * 
  * @see https://stackoverflow.com/a/8664879
  */
-void rotate(tetronimo tetronimo, int r)
+void rotate(tetronimo *tetronimo, rotation rotation)
 {
-    switch (r)
+    if (tetronimo->direction == NONE)
     {
-    case 0: /* 90 degrees */
-        transpose_square(tetronimo);
-        reverse_rows(tetronimo);
+        return;
+    }
+
+    switch (rotation)
+    {
+    case NINETY_DEGREES:
+        transpose_square(tetronimo->matrix);
+        reverse_rows(tetronimo->matrix);
         break;
-    case 1: /* 180 degrees */
-        reverse_rows(tetronimo);
-        reverse_cols(tetronimo);
+    case ONE_EIGHTY_DEGREES:
+        reverse_rows(tetronimo->matrix);
+        reverse_cols(tetronimo->matrix);
         break;
-    case 2: /* 270 degrees */
-        reverse_rows(tetronimo);
-        transpose_square(tetronimo);
+    case TWO_SEVENTY_DEGREES:
+        reverse_rows(tetronimo->matrix);
+        transpose_square(tetronimo->matrix);
         break;
     default:
         break;
     }
+
+    tetronimo->direction = (tetronimo->direction + rotation) % 4;
 }
