@@ -236,6 +236,39 @@ static void render_shape(shape *shape)
 }
 
 /**
+ * Removes row from the grid if it is full.
+ */
+static void remove_full_row(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], int row)
+{
+    int count = 0;
+    for (int col = 0; col < GRID_CELL_WIDTH; col++)
+    {
+        if (grid[row][col])
+        {
+            count++;
+        }
+    }
+
+    if (count == GRID_CELL_WIDTH)
+    {
+        // Shift everything in the grid down from row up to the second row
+        for (int r = row; r > 0; r--)
+        {
+            for (int col = 0; col < GRID_CELL_WIDTH; col++)
+            {
+                grid[r][col] = grid[r - 1][col];
+            }
+        }
+
+        // Clear out the top row
+        for (int col = 0; col < GRID_CELL_WIDTH; col++)
+        {
+            grid[0][col] = 0;
+        }
+    }
+}
+
+/**
  * Adds the tetronimo to the playing area
  */
 static void add_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shape)
@@ -245,15 +278,18 @@ static void add_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shap
 
     for (int i = 0; i < MATRIX_SIZE; i++)
     {
+        grid_y = CONVERT_TO_Y_GRID(shape->y + (i * CELL_SIZE));
+
         for (int j = 0; j < MATRIX_SIZE; j++)
         {
             if ((*c_tet)[i][j])
             {
                 grid_x = CONVERT_TO_X_GRID(shape->x + (j * CELL_SIZE));
-                grid_y = CONVERT_TO_Y_GRID(shape->y + (i * CELL_SIZE));
                 grid[grid_y][grid_x] = shape->color;
             }
         }
+
+        remove_full_row(grid, grid_y);
     }
 }
 
