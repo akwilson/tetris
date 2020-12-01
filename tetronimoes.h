@@ -1,8 +1,9 @@
 #ifndef TETRONIMOES_H
 #define TETRONIMOES_H
 
+// tetronimoes are defined in a 4 X 4 matrix
 #define MATRIX_SIZE 4
-#define NUM_TETRONIMOES 5
+#define NUM_TETRONIMOES 7
 
 typedef enum direction
 {

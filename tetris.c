@@ -325,6 +325,7 @@ int main()
     int speed = 500;
     int loopCnt = 0;
     int running = 1;
+    int num_pieces = 1;
     while (!quit)
     {
         loopCnt += running;
@@ -348,6 +349,11 @@ int main()
         if (loopCnt == speed)
         {
             loopCnt = 0;
+            if (num_pieces % 10 == 0 && speed >= 50)
+            {
+                speed -= 20;
+            }
+
             if (is_position_valid(shape.tetronimo, shape.x, shape.y + CELL_SIZE, grid))
             {
                 shape.y += CELL_SIZE;
@@ -356,6 +362,7 @@ int main()
             {
                 add_to_grid(grid, &shape);
                 reset_shape(&shape);
+                num_pieces++;
                 if (!is_position_valid(shape.tetronimo, shape.x, shape.y, grid))
                 {
                     shape.color = RED;

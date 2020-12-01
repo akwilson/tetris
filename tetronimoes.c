@@ -50,6 +50,24 @@ tetronimo tetronimoes[NUM_TETRONIMOES] = {
             { 0, 0, 0, 0 }
         },
         UP
+    },
+    {
+        {
+            { 0, 0, 1, 0 },
+            { 0, 0, 1, 0 },
+            { 0, 1, 1, 0 },
+            { 0, 0, 0, 0 }
+        },
+        UP
+    },
+    {
+        {
+            { 0, 0, 1, 0 },
+            { 0, 1, 1, 0 },
+            { 0, 1, 0, 0 },
+            { 0, 0, 0, 0 }
+        },
+        UP
     }
 };
 
@@ -94,7 +112,7 @@ static void reverse_cols(int matrix[MATRIX_SIZE][MATRIX_SIZE])
 }
 
 /**
- * @brief Rotates a tetronimo and maintains a record if its direction
+ * Rotates a tetronimo and maintains a record if its direction
  * 
  * @see https://stackoverflow.com/a/8664879
  */
