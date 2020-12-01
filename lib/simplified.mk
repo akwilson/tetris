@@ -1,11 +1,14 @@
-# Makefile to build a shared object and/or a binary executable and/or unit test executable
+# Makefile to build a shared object and/or a binary executable and/or unit test executable from C code
 # Include this file in your own Makefile
 # Places object, dependency files and output files in $(BUILDDIR)
 # $(BUILDDIR) created if it does not exist
+# $(INCLUDE_PATH) to specify header file search path; $(LIB_PATH) to specify library search path
+# e.g. INCLUDE_PATH = -I/usr/local/include -I/some/path/include
+#      LIB_PATH = -L/usr/local/lib -L/some/path/lib
 # Compiles using full warnings and rebuilds when header files are changed
 # `make clean` will remove all output from $(BUILDDIR)
 # `make tests` will run the unit test binary
-# `make install` will install the files in /usr/local
+# `make install` will install the bin and lib targets in /usr/local
 
 ifeq ($(BUILDDIR),)
 	BUILDDIR = build
@@ -23,7 +26,7 @@ TST1_OUT = $(addprefix $(BUILDDIR)/, $(TST1))
 TST1_OBJS = $(TST1_SRCS:%.c=$(addprefix $(BUILDDIR)/, %.o))
 TST1_DEPS = $(TST1_OBJS:%.o=%.d)
 
-CFLAGS = -g -I. -I /usr/local/include -Wall -Wextra
+CFLAGS = -g -I. $(INCLUDE_PATH) -Wall -Wextra
 #LDFLAGS = -linker_flags
 
 $(BUILDDIR)/%.o : %.c
@@ -35,10 +38,10 @@ $(LIB1_OUT) : $(LIB1_OBJS)
 	$(LINK.c) $^ -shared -o $@
 
 $(BIN1_OUT) : $(BIN1_OBJS)
-	$(LINK.c) $^ -L$(LIB_PATH) $(LIBS) -o $@
+	$(LINK.c) $^ $(LIB_PATH) $(LIBS) -o $@
 
 $(TST1_OUT) : $(TST1_OBJS)
-	$(LINK.c) $^ -L$(LIB_PATH) $(LIBS) -o $@
+	$(LINK.c) $^ $(LIB_PATH) $(LIBS) -o $@
 
 -include $(LIB1_DEPS) $(BIN1_DEPS) $(TST1_DEPS)
 
