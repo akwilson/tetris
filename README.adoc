@@ -1,0 +1,12 @@
+= Tetris
+
+Tetris in C using SDL2. Tested on Mac OS but there's no reason it shouldn't work elsewhere.
+
+== Build it...
+Install SDL2 via Homebrew and run make
+
+[source,bash]
+----
+$ brew install sdl2 sdl2_image sdl2_ttf
+$ make
+----
