@@ -13,6 +13,8 @@
 #define GRID_CELL_HEIGHT 18
 #define GRID_WIDTH GRID_CELL_WIDTH * CELL_SIZE
 #define GRID_HEIGHT GRID_CELL_HEIGHT * CELL_SIZE
+#define SCREEN_FPS 60
+#define SCREEN_TICKS_PER_FRAME (1000 / SCREEN_FPS)
 
 // The window we'll be rendering to
 static SDL_Window *window;
@@ -322,12 +324,14 @@ int main()
     reset_shape(&shape);
     SDL_Event e;
     int quit = 0;
-    int speed = 500;
+    int speed = 90;
     int loopCnt = 0;
     int running = 1;
     int num_pieces = 1;
+    uint32_t start_ms;
     while (!quit)
     {
+        start_ms = SDL_GetTicks();
         loopCnt += running;
         while (SDL_PollEvent(&e))
         {
@@ -349,11 +353,6 @@ int main()
         if (loopCnt == speed)
         {
             loopCnt = 0;
-            if (num_pieces % 10 == 0 && speed >= 50)
-            {
-                speed -= 20;
-            }
-
             if (is_position_valid(shape.tetronimo, shape.x, shape.y + CELL_SIZE, grid))
             {
                 shape.y += CELL_SIZE;
@@ -368,6 +367,13 @@ int main()
                     shape.color = RED;
                     running = 0;
                 }
+
+                // Increase speed / difficulty
+                if (num_pieces % 10 == 0 && speed > 10)
+                {
+                    speed -= 10;
+                    printf("New speed: %d, Num Pieces: %d\n", speed, num_pieces);
+                }
             }
         }
 
@@ -380,6 +386,13 @@ int main()
 
         // Update screen
         SDL_RenderPresent(renderer);
+
+        // Limit FPS to avoid maxing out CPU
+        int frameTicks = SDL_GetTicks() - start_ms;
+        if (frameTicks < SCREEN_TICKS_PER_FRAME)
+        {
+            SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
+        }
     }
 
     close();
