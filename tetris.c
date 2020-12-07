@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "tetronimoes.h"
 
@@ -15,6 +16,7 @@
 #define GRID_HEIGHT GRID_CELL_HEIGHT * CELL_SIZE
 #define SCREEN_FPS 60
 #define SCREEN_TICKS_PER_FRAME (1000 / SCREEN_FPS)
+#define INITIAL_SPEED 90
 
 // The window we'll be rendering to
 static SDL_Window *window;
@@ -54,6 +56,13 @@ typedef struct game_state
     int score;
 } game_state;
 
+typedef struct text
+{
+    SDL_Texture *text_texture;
+    int width;
+    int height;
+} text;
+
 // Macros to convert pixel positions to positions in the grid array
 #define CONVERT_TO_X_GRID(x) (x - GRID_X_OFFSET) / CELL_SIZE
 #define CONVERT_TO_Y_GRID(y) (y - GRID_Y_OFFSET) / CELL_SIZE
@@ -89,7 +98,80 @@ static int init()
         return 1;
     }
 
+    // Initialize TTF Font loading
+    if (TTF_Init() == -1)
+    {
+        fprintf(stderr, "SDL_ttf could not initialize. SDL_ttf Error: %s\n", TTF_GetError());
+        return 1;
+    }
+
     return 0;
+}
+
+static TTF_Font *load_font(const char *path)
+{
+    // Open the font
+    TTF_Font *ttf_font = TTF_OpenFont(path, 22);
+    if (!ttf_font)
+    {
+        fprintf(stderr, "Failed to load font. SDL_ttf Error: %s\n", TTF_GetError());
+        return 0;
+    }
+
+    return ttf_font;
+}
+
+static void free_texture(text *text)
+{
+    if (text->text_texture != 0)
+    {
+        SDL_DestroyTexture(text->text_texture);
+        text->text_texture = 0;
+        text->width = 0;
+        text->height = 0;
+    }
+}
+
+/*
+ * Creates the text texture
+ */
+static int set_text(text *text, TTF_Font *ttf_font, const char *message)
+{
+    free_texture(text);
+
+    // Render text
+    SDL_Color text_color = { 0, 0, 0, 0xFF };
+    SDL_Surface *text_surface = TTF_RenderText_Solid(ttf_font, message, text_color);
+    if (!text_surface)
+    {
+        fprintf(stderr, "Unable to render text surface. SDL_ttf Error: %s\n", TTF_GetError());
+        return 1;
+    }
+
+    // Create texture from surface pixels
+    SDL_Texture *text_text = SDL_CreateTextureFromSurface(renderer, text_surface);
+    if (!text_text)
+    {
+        fprintf(stderr, "Unable to create texture from rendered text. SDL Error: %s\n", SDL_GetError());
+        return 1;
+    }
+
+    text->text_texture = text_text;
+    text->width = text_surface->w;
+    text->height = text_surface->h;
+
+    SDL_FreeSurface(text_surface);
+    return 0;
+}
+
+/*
+ * Render the a text message
+ */
+static void render_message(text *text, int x, int y)
+{
+    // Set rendering space and render to screen
+    SDL_Rect render_quad = { x, y, text->width, text->height };
+    SDL_RenderCopy(renderer, text->text_texture, 0, &render_quad);
 }
 
 /*
@@ -295,12 +377,20 @@ static int remove_full_row(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], int row)
 }
 
 /**
+ * Gets the current level from the game state
+ */
+static int get_level(game_state *state)
+{
+    return ((INITIAL_SPEED - state->speed) / 10) + 1;
+}
+
+/**
  * Original Nintendo scoring system.
  */
 static void update_score(game_state *state, int num_rows)
 {
     static int SCORE_TABLE[5] = { 0, 40, 100, 300, 1200 };
-    state->score += SCORE_TABLE[num_rows] * (num_rows + 1);
+    state->score += SCORE_TABLE[num_rows] * get_level(state);
 }
 
 /**
@@ -350,7 +440,7 @@ static void init_game(game_state *state)
     state->num_pieces = 1;
     state->running = 1;
     state->score = 0;
-    state->speed = 90;
+    state->speed = INITIAL_SPEED;
 }
 
 static void new_frame(game_state *state)
@@ -367,7 +457,6 @@ static void check_level(game_state *state)
     if (state->num_pieces % 10 == 0 && state->speed > 10)
     {
         state->speed -= 10;
-        printf("New speed: %d, Num Pieces: %d\n", state->speed, state->num_pieces);
     }
 }
 
@@ -405,7 +494,13 @@ static void end_shape(game_state *state, int grid[GRID_CELL_HEIGHT][GRID_CELL_WI
 
 int main()
 {
+    TTF_Font *msg_font;
     if (init())
+    {
+        return 1;
+    }
+
+    if ((msg_font = load_font("assets/arial.ttf")) == 0)
     {
         return 1;
     }
@@ -418,6 +513,10 @@ int main()
     SDL_Event e;
     uint32_t start_ms;
     int quit = 0;
+
+    text level_text = { 0 };
+    text score_text = { 0 };
+    char message[512];
 
     init_game(&state);
     reset_shape(&shape);
@@ -458,6 +557,14 @@ int main()
 
         render_grid(grid);
         render_shape(&shape);
+
+        sprintf(message, "Level: %d", get_level(&state));
+        set_text(&level_text, msg_font, message);
+        render_message(&level_text, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET);
+
+        sprintf(message, "Score: %d", state.score);
+        set_text(&score_text, msg_font, message);
+        render_message(&score_text, GRID_WIDTH + GRID_X_OFFSET * 2, level_text.height + GRID_Y_OFFSET);
 
         // Update screen
         SDL_RenderPresent(renderer);
