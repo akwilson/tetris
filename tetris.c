@@ -42,6 +42,18 @@ typedef struct shape
     int y;                // y pixel position relative to the top left of the grid
 } shape;
 
+/**
+ * Variables to control the state of the game
+ */
+typedef struct game_state
+{
+    int speed;
+    int loop_count;
+    int running;
+    int num_pieces;
+    int score;
+} game_state;
+
 // Macros to convert pixel positions to positions in the grid array
 #define CONVERT_TO_X_GRID(x) (x - GRID_X_OFFSET) / CELL_SIZE
 #define CONVERT_TO_Y_GRID(y) (y - GRID_Y_OFFSET) / CELL_SIZE
@@ -189,8 +201,13 @@ static int is_position_valid(tetronimo *tetronimo, int new_x, int new_y, int gri
 /**
  * Handles keyboard input. Updates the shape with the new coordinates and rotation.
  */
-static void handle_keys(SDL_Keycode key_code, shape *shape, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
+static void handle_keys(SDL_Keycode key_code, shape *shape, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], game_state *state)
 {
+    if (!state->running)
+    {
+        return;
+    }
+
     switch (key_code)
     {
     case SDLK_DOWN:
@@ -240,8 +257,10 @@ static void render_shape(shape *shape)
 
 /**
  * Removes row from the grid if it is full.
+ * 
+ * @returns 1 if the row was removed, 0 otherwise
  */
-static void remove_full_row(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], int row)
+static int remove_full_row(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], int row)
 {
     int count = 0;
     for (int col = 0; col < GRID_CELL_WIDTH; col++)
@@ -268,15 +287,28 @@ static void remove_full_row(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], int row
         {
             grid[0][col] = 0;
         }
+
+        return 1;
     }
+
+    return 0;
 }
 
 /**
- * Adds the tetronimo to the playing area
+ * Original Nintendo scoring system.
  */
-static void add_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shape)
+static void update_score(game_state *state, int num_rows)
 {
-    int grid_x, grid_y;
+    static int SCORE_TABLE[5] = { 0, 40, 100, 300, 1200 };
+    state->score += SCORE_TABLE[num_rows] * (num_rows + 1);
+}
+
+/**
+ * Adds the tetronimo to the playing area. Removes full rows and updates the game score.
+ */
+static void add_shape_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shape, game_state *state)
+{
+    int grid_x, grid_y, row_count = 0;
     for (int i = 0; i < MATRIX_SIZE; i++)
     {
         grid_y = CONVERT_TO_Y_GRID(shape->y + (i * CELL_SIZE));
@@ -290,8 +322,10 @@ static void add_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shap
             }
         }
 
-        remove_full_row(grid, grid_y);
+        row_count += remove_full_row(grid, grid_y);
     }
+
+    update_score(state, row_count);
 }
 
 /**
@@ -310,6 +344,65 @@ static void reset_shape(shape *shape)
     shape->y = GRID_Y_OFFSET;
 }
 
+static void init_game(game_state *state)
+{
+    state->loop_count = 0;
+    state->num_pieces = 1;
+    state->running = 1;
+    state->score = 0;
+    state->speed = 90;
+}
+
+static void new_frame(game_state *state)
+{
+    state->loop_count += state->running;
+}
+
+/**
+ * Checks if it is time to increase the level of difficulty, i.e. increase
+ * the speed that tetronimoes drop down.
+ */
+static void check_level(game_state *state)
+{
+    if (state->num_pieces % 10 == 0 && state->speed > 10)
+    {
+        state->speed -= 10;
+        printf("New speed: %d, Num Pieces: %d\n", state->speed, state->num_pieces);
+    }
+}
+
+/**
+ * Checks if it is time to force the tetronimo down a row.
+ */
+static int check_force_down(game_state *state)
+{
+    if (state->loop_count == state->speed)
+    {
+        state->loop_count = 0;
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+ * End of life for a shape. Add it to the grid and select a new one.
+ * Check for end of game and the level of difficulty.
+ */
+static void end_shape(game_state *state, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape *shape)
+{
+    add_shape_to_grid(grid, shape, state);
+    reset_shape(shape);
+    state->num_pieces++;
+    if (!is_position_valid(shape->tetronimo, shape->x, shape->y, grid))
+    {
+        shape->color = RED;
+        state->running = 0;
+    }
+
+    check_level(state);
+}
+
 int main()
 {
     if (init())
@@ -321,18 +414,19 @@ int main()
 
     int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH] = { 0 };
     shape shape;
-    reset_shape(&shape);
+    game_state state;
     SDL_Event e;
-    int quit = 0;
-    int speed = 90;
-    int loopCnt = 0;
-    int running = 1;
-    int num_pieces = 1;
     uint32_t start_ms;
+    int quit = 0;
+
+    init_game(&state);
+    reset_shape(&shape);
+
     while (!quit)
     {
         start_ms = SDL_GetTicks();
-        loopCnt += running;
+        new_frame(&state);
+
         while (SDL_PollEvent(&e))
         {
             switch (e.type)
@@ -341,39 +435,20 @@ int main()
                 quit = 1;
                 break;
             case SDL_KEYDOWN:
-                if (running)
-                {
-                    handle_keys(e.key.keysym.sym, &shape, grid);
-                }
+                handle_keys(e.key.keysym.sym, &shape, grid, &state);
                 break;
             }
         }
 
-        // Force tetronimo down after a time
-        if (loopCnt == speed)
+        if (check_force_down(&state))
         {
-            loopCnt = 0;
             if (is_position_valid(shape.tetronimo, shape.x, shape.y + CELL_SIZE, grid))
             {
                 shape.y += CELL_SIZE;
             }
             else
             {
-                add_to_grid(grid, &shape);
-                reset_shape(&shape);
-                num_pieces++;
-                if (!is_position_valid(shape.tetronimo, shape.x, shape.y, grid))
-                {
-                    shape.color = RED;
-                    running = 0;
-                }
-
-                // Increase speed / difficulty
-                if (num_pieces % 10 == 0 && speed > 10)
-                {
-                    speed -= 10;
-                    printf("New speed: %d, Num Pieces: %d\n", speed, num_pieces);
-                }
+                end_shape(&state, grid, &shape);
             }
         }
 
