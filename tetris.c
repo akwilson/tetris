@@ -1,12 +1,10 @@
 #include <stdlib.h>
 #include <time.h>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 
 #include "tetronimoes.h"
+#include "graphics.h"
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
 #define CELL_SIZE 25
 #define GRID_X_OFFSET 25
 #define GRID_Y_OFFSET 25
@@ -17,21 +15,6 @@
 #define SCREEN_FPS 60
 #define SCREEN_TICKS_PER_FRAME (1000 / SCREEN_FPS)
 #define INITIAL_SPEED 90
-
-// The window we'll be rendering to
-static SDL_Window *window;
-
-// The renderer to draw the texture on the window
-static SDL_Renderer *renderer;
-
-typedef enum color
-{
-    PURPLE = 1,
-    GREEN,
-    BLUE,
-    YELLOW,
-    RED
-} color;
 
 /**
  * An in-play tetronimo
@@ -56,168 +39,16 @@ typedef struct game_state
     int score;
 } game_state;
 
-typedef struct text
-{
-    SDL_Texture *text_texture;
-    int width;
-    int height;
-} text;
-
 // Macros to convert pixel positions to positions in the grid array
 #define CONVERT_TO_X_GRID(x) (x - GRID_X_OFFSET) / CELL_SIZE
 #define CONVERT_TO_Y_GRID(y) (y - GRID_Y_OFFSET) / CELL_SIZE
 
-// == SDL STUFF ======================================
-
-/*
- * Starts up SDL and creates window
+/**
+ * Renders the grid to the screen
  */
-static int init()
+static void render_grid_cells(graphics *graphics, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
 {
-    // Initialise SDL and the SDL video subsystem
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
-    {
-        fprintf(stderr, "SDL init failed. SDL_Error:%s\n", SDL_GetError());
-        return 1;
-    }
-
-    // Create window
-    window = SDL_CreateWindow("Tetris", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                              SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    if (!window)
-    {
-        fprintf(stderr, "Window could not be created. SDL_Error: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    // Create renderer for window
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer)
-    {
-        fprintf(stderr, "Renderer could not be created. SDL Error: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    // Initialize TTF Font loading
-    if (TTF_Init() == -1)
-    {
-        fprintf(stderr, "SDL_ttf could not initialize. SDL_ttf Error: %s\n", TTF_GetError());
-        return 1;
-    }
-
-    return 0;
-}
-
-static TTF_Font *load_font(const char *path)
-{
-    // Open the font
-    TTF_Font *ttf_font = TTF_OpenFont(path, 22);
-    if (!ttf_font)
-    {
-        fprintf(stderr, "Failed to load font. SDL_ttf Error: %s\n", TTF_GetError());
-        return 0;
-    }
-
-    return ttf_font;
-}
-
-static void free_texture(text *text)
-{
-    if (text->text_texture != 0)
-    {
-        SDL_DestroyTexture(text->text_texture);
-        text->text_texture = 0;
-        text->width = 0;
-        text->height = 0;
-    }
-}
-
-/*
- * Creates the text texture
- */
-static int set_text(text *text, TTF_Font *ttf_font, const char *message)
-{
-    free_texture(text);
-
-    // Render text
-    SDL_Color text_color = { 0, 0, 0, 0xFF };
-    SDL_Surface *text_surface = TTF_RenderText_Solid(ttf_font, message, text_color);
-    if (!text_surface)
-    {
-        fprintf(stderr, "Unable to render text surface. SDL_ttf Error: %s\n", TTF_GetError());
-        return 1;
-    }
-
-    // Create texture from surface pixels
-    SDL_Texture *text_text = SDL_CreateTextureFromSurface(renderer, text_surface);
-    if (!text_text)
-    {
-        fprintf(stderr, "Unable to create texture from rendered text. SDL Error: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    text->text_texture = text_text;
-    text->width = text_surface->w;
-    text->height = text_surface->h;
-
-    SDL_FreeSurface(text_surface);
-    return 0;
-}
-
-/*
- * Render the a text message
- */
-static void render_message(text *text, int x, int y)
-{
-    // Set rendering space and render to screen
-    SDL_Rect render_quad = { x, y, text->width, text->height };
-    SDL_RenderCopy(renderer, text->text_texture, 0, &render_quad);
-}
-
-/*
- * Frees media and shuts down SDL
- */
-static void close()
-{
-    // Destroy window and renderer
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    renderer = 0;
-    window = 0;
-
-    // Quit SDL subsys
-    SDL_Quit();
-}
-
-static void set_render_color(color color)
-{
-    switch (color)
-    {
-    case PURPLE:
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0xFF, 0xFF);
-        break;
-    case GREEN:
-        SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF);
-        break;
-    case BLUE:
-        SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xFF, 0xFF);
-        break;
-    case YELLOW:
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0x00, 0xFF);
-        break;
-    case RED:
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
-        break;
-    }
-}
-
-// == GAME ==================================
-
-static void render_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
-{
-    SDL_Rect outline = { GRID_X_OFFSET, GRID_Y_OFFSET, GRID_WIDTH, GRID_HEIGHT };
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-    SDL_RenderDrawRect(renderer, &outline);
+    render_quad(graphics, GRID_X_OFFSET, GRID_Y_OFFSET, GRID_WIDTH, GRID_HEIGHT, 0, BLACK);
 
     int draw_x, draw_y;
     for (int i = 0; i < GRID_CELL_HEIGHT; i++)
@@ -228,9 +59,27 @@ static void render_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
             {
                 draw_x = GRID_X_OFFSET + (j * CELL_SIZE);
                 draw_y = GRID_Y_OFFSET + (i * CELL_SIZE);
-                SDL_Rect fill_rect = { draw_x, draw_y, CELL_SIZE, CELL_SIZE };
-                set_render_color(grid[i][j]);
-                SDL_RenderFillRect(renderer, &fill_rect);
+                render_quad(graphics, draw_x, draw_y, CELL_SIZE, CELL_SIZE, 1, grid[i][j]);
+            }
+        }
+    }
+}
+
+/**
+ * Renders the shape to the screen
+ */
+static void render_shape_cells(graphics *graphics, shape *shape)
+{
+    int draw_x, draw_y;
+    for (int i = 0; i < MATRIX_SIZE; i++)
+    {
+        for (int j = 0; j < MATRIX_SIZE; j++)
+        {
+            if (shape->tetronimo->matrix[i][j])
+            {
+                draw_x = shape->x + (j * CELL_SIZE);
+                draw_y = shape->y + (i * CELL_SIZE);
+                render_quad(graphics, draw_x, draw_y, CELL_SIZE, CELL_SIZE, 1, shape->color);
             }
         }
     }
@@ -282,6 +131,11 @@ static int is_position_valid(tetronimo *tetronimo, int new_x, int new_y, int gri
 
 /**
  * Handles keyboard input. Updates the shape with the new coordinates and rotation.
+ * 
+ * @param key_code the key pressed by the user
+ * @param shape    the current in-play shape
+ * @param grid     the play area
+ * @param state    the game state
  */
 static void handle_keys(SDL_Keycode key_code, shape *shape, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], game_state *state)
 {
@@ -315,25 +169,6 @@ static void handle_keys(SDL_Keycode key_code, shape *shape, int grid[GRID_CELL_H
             rotate(shape->tetronimo, NINETY_DEGREES);
         }
         break;
-    }
-}
-
-static void render_shape(shape *shape)
-{
-    int draw_x, draw_y;
-    for (int i = 0; i < MATRIX_SIZE; i++)
-    {
-        for (int j = 0; j < MATRIX_SIZE; j++)
-        {
-            if (shape->tetronimo->matrix[i][j])
-            {
-                draw_x = shape->x + (j * CELL_SIZE);
-                draw_y = shape->y + (i * CELL_SIZE);
-                SDL_Rect fill_rect = { draw_x, draw_y, CELL_SIZE, CELL_SIZE };
-                set_render_color(shape->color);
-                SDL_RenderFillRect(renderer, &fill_rect);
-            }
-        }
     }
 }
 
@@ -443,6 +278,9 @@ static void init_game(game_state *state)
     state->speed = INITIAL_SPEED;
 }
 
+/**
+ * Prepare the state for the next frame
+ */
 static void new_frame(game_state *state)
 {
     state->loop_count += state->running;
@@ -494,13 +332,8 @@ static void end_shape(game_state *state, int grid[GRID_CELL_HEIGHT][GRID_CELL_WI
 
 int main()
 {
-    TTF_Font *msg_font;
-    if (init())
-    {
-        return 1;
-    }
-
-    if ((msg_font = load_font("assets/arial.ttf")) == 0)
+    graphics *graphics = init_graphics();
+    if (!graphics)
     {
         return 1;
     }
@@ -513,9 +346,6 @@ int main()
     SDL_Event e;
     uint32_t start_ms;
     int quit = 0;
-
-    text level_text = { 0 };
-    text score_text = { 0 };
     char message[512];
 
     init_game(&state);
@@ -551,23 +381,18 @@ int main()
             }
         }
 
-        // Initialize renderer color & clear screen
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-        SDL_RenderClear(renderer);
+        clear_frame(graphics);
 
-        render_grid(grid);
-        render_shape(&shape);
+        render_grid_cells(graphics, grid);
+        render_shape_cells(graphics, &shape);
 
         sprintf(message, "Level: %d", get_level(&state));
-        set_text(&level_text, msg_font, message);
-        render_message(&level_text, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET);
+        render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET);
 
         sprintf(message, "Score: %d", state.score);
-        set_text(&score_text, msg_font, message);
-        render_message(&score_text, GRID_WIDTH + GRID_X_OFFSET * 2, level_text.height + GRID_Y_OFFSET);
+        render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 2);
 
-        // Update screen
-        SDL_RenderPresent(renderer);
+        commit_to_screen(graphics);
 
         // Limit FPS to avoid maxing out CPU
         int frameTicks = SDL_GetTicks() - start_ms;
@@ -577,6 +402,6 @@ int main()
         }
     }
 
-    close();
+    close_graphics(graphics);
     return 0;
 }

@@ -111,11 +111,6 @@ static void reverse_cols(int matrix[MATRIX_SIZE][MATRIX_SIZE])
     }
 }
 
-/**
- * Rotates a tetronimo and maintains a record if its direction
- * 
- * @see https://stackoverflow.com/a/8664879
- */
 void rotate(tetronimo *tetronimo, rotation rotation)
 {
     if (tetronimo->direction == NONE)

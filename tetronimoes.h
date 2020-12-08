@@ -1,10 +1,15 @@
-#ifndef TETRONIMOES_H
-#define TETRONIMOES_H
+/**
+ * Definition of tetronimoes and a function to rotate them
+ */
+#pragma once
 
 // tetronimoes are defined in a 4 X 4 matrix
 #define MATRIX_SIZE 4
 #define NUM_TETRONIMOES 7
 
+/**
+ * The direction the tetronimo is facing
+ */
 typedef enum direction
 {
     NONE = -1, // tetronimo cannot be rotated
@@ -14,6 +19,9 @@ typedef enum direction
     LEFT
 } direction;
 
+/**
+ * Valid tetronimo rotation options
+ */
 typedef enum rotation
 {
     NINETY_DEGREES = 1,
@@ -30,8 +38,17 @@ typedef struct tetronimo
     direction direction;                  // The tetronimo's current direction
 } tetronimo;
 
+/**
+ * Definitions of the available tetronimoes
+ */
 tetronimo tetronimoes[NUM_TETRONIMOES];
 
+/**
+ * Rotates a tetronimo in place and maintains a record if its direction
+ * 
+ * @param tetronimo the tetronimo to rotate
+ * @param rotation the rotation direction
+ * 
+ * @see https://stackoverflow.com/a/8664879
+ */
 void rotate(tetronimo *tetronimo, rotation rotation);
-
-#endif
