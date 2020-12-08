@@ -6,8 +6,8 @@
 #include "graphics.h"
 
 #define CELL_SIZE 25
-#define GRID_X_OFFSET 25
-#define GRID_Y_OFFSET 25
+#define GRID_X_OFFSET 50
+#define GRID_Y_OFFSET 50
 #define GRID_CELL_WIDTH 12
 #define GRID_CELL_HEIGHT 18
 #define GRID_WIDTH GRID_CELL_WIDTH * CELL_SIZE
@@ -46,10 +46,12 @@ typedef struct game_state
 /**
  * Renders the grid to the screen
  */
-static void render_grid_cells(graphics *graphics, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
+static void render_grid(graphics *graphics, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH])
 {
-    render_quad(graphics, GRID_X_OFFSET, GRID_Y_OFFSET, GRID_WIDTH, GRID_HEIGHT, 0, BLACK);
+    // Render outline
+    render_quad(graphics, GRID_X_OFFSET - 1, GRID_Y_OFFSET - 1, GRID_WIDTH + 2, GRID_HEIGHT + 2, 0, DARK);
 
+    // Render grid cells
     int draw_x, draw_y;
     for (int i = 0; i < GRID_CELL_HEIGHT; i++)
     {
@@ -264,7 +266,7 @@ static void reset_shape(shape *shape)
         rotate(shape->tetronimo, 4 - shape->tetronimo->direction);
     }
 
-    shape->color = (rand() % YELLOW) + 1;
+    shape->color = (rand() % BLUE) + 1;
     shape->x = (GRID_WIDTH / 2) + GRID_X_OFFSET;
     shape->y = GRID_Y_OFFSET;
 }
@@ -383,13 +385,13 @@ int main()
 
         clear_frame(graphics);
 
-        render_grid_cells(graphics, grid);
+        render_grid(graphics, grid);
         render_shape_cells(graphics, &shape);
 
-        sprintf(message, "Level: %d", get_level(&state));
+        sprintf(message, "Level %d", get_level(&state));
         render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET);
 
-        sprintf(message, "Score: %d", state.score);
+        sprintf(message, "Score %d", state.score);
         render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 2);
 
         commit_to_screen(graphics);

@@ -36,8 +36,9 @@ static TTF_Font *load_font(const char *path)
 static int render_text_texture(graphics *graphics, const char *message, int x, int y)
 {
     // Render text
-    SDL_Color text_color = { 0, 0, 0, 0xFF };
-    SDL_Surface *text_surface = TTF_RenderText_Solid(graphics->font, message, text_color);
+    SDL_Color text_color = { 0xEC, 0xEF, 0xF4, 0xFF };
+    SDL_Color back_color = { 0x2E, 0x34, 0x40, 0xFF };
+    SDL_Surface *text_surface = TTF_RenderText_Shaded(graphics->font, message, text_color, back_color);
     if (!text_surface)
     {
         fprintf(stderr, "Unable to render text surface. SDL_ttf Error: %s\n", TTF_GetError());
@@ -76,20 +77,23 @@ static void set_render_color(graphics *graphics, color color)
     case BLACK:
         SDL_SetRenderDrawColor(graphics->renderer, 0x00, 0x00, 0x00, 0xFF);
         break;
-    case PURPLE:
-        SDL_SetRenderDrawColor(graphics->renderer, 0xFF, 0x00, 0xFF, 0xFF);
+    case YELLOW:
+        SDL_SetRenderDrawColor(graphics->renderer, 0xEB, 0xCB, 0x8B, 0xFF);
         break;
     case GREEN:
-        SDL_SetRenderDrawColor(graphics->renderer, 0x00, 0xFF, 0x00, 0xFF);
+        SDL_SetRenderDrawColor(graphics->renderer, 0xA3, 0xBE, 0x8C, 0xFF);
+        break;
+    case PINK:
+        SDL_SetRenderDrawColor(graphics->renderer, 0xB4, 0x8E, 0xAD, 0xFF);
         break;
     case BLUE:
-        SDL_SetRenderDrawColor(graphics->renderer, 0x00, 0x00, 0xFF, 0xFF);
-        break;
-    case YELLOW:
-        SDL_SetRenderDrawColor(graphics->renderer, 0xFF, 0xFF, 0x00, 0xFF);
+        SDL_SetRenderDrawColor(graphics->renderer, 0x5E, 0x81, 0xAC, 0xFF);
         break;
     case RED:
-        SDL_SetRenderDrawColor(graphics->renderer, 0xFF, 0x00, 0x00, 0xFF);
+        SDL_SetRenderDrawColor(graphics->renderer, 0xBF, 0x61, 0x6A, 0xFF);
+        break;
+    case DARK:
+        SDL_SetRenderDrawColor(graphics->renderer, 0x4C, 0x56, 0x6A, 0xFF);
         break;
     }
 }
@@ -137,7 +141,7 @@ graphics *init_graphics()
 
 void clear_frame(graphics *graphics)
 {
-    SDL_SetRenderDrawColor(graphics->renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+    SDL_SetRenderDrawColor(graphics->renderer, 0x2E, 0x34, 0x40, 0xFF);
     SDL_RenderClear(graphics->renderer);
 }
 

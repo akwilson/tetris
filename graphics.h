@@ -6,11 +6,12 @@
 typedef enum color
 {
     BLACK,
-    PURPLE,
-    GREEN,
-    BLUE,
     YELLOW,
-    RED
+    GREEN,
+    PINK,
+    BLUE,
+    RED,
+    DARK
 } color;
 
 /**
