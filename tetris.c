@@ -15,6 +15,8 @@
 #define SCREEN_FPS 60
 #define SCREEN_TICKS_PER_FRAME (1000 / SCREEN_FPS)
 #define INITIAL_SPEED 90
+#define BTN_SPRITE_WIDTH 125
+#define BTN_SPRITE_HEIGHT 40
 
 /**
  * An in-play tetronimo
@@ -27,6 +29,9 @@ typedef struct shape
     int y;                // y pixel position relative to the top left of the grid
 } shape;
 
+enum images { BUTTON_SHEET, GAME_OVER };
+enum sprites { PAUSE, RESTART, PAUSE_MO, RESTART_MO };
+
 /**
  * Variables to control the state of the game
  */
@@ -37,6 +42,8 @@ typedef struct game_state
     int running;
     int num_pieces;
     int score;
+    int images[2];
+    SDL_Rect **btn_sprites;
 } game_state;
 
 // Macros to convert pixel positions to positions in the grid array
@@ -84,6 +91,58 @@ static void render_shape_cells(graphics *graphics, shape *shape)
                 render_quad(graphics, draw_x, draw_y, CELL_SIZE, CELL_SIZE, 1, shape->color);
             }
         }
+    }
+}
+
+/**
+ * Gets the current level from the game state
+ */
+static int get_level(game_state *state)
+{
+    return ((INITIAL_SPEED - state->speed) / 10) + 1;
+}
+
+static int is_in_area(int area_x, int area_y, int width, int height, int x, int y)
+{
+    return (x >= area_x && x <= area_x + width && y >= area_y && y <= area_y + height);
+}
+
+/**
+ * Render game status information -- score, game over message, buttons.
+ */
+static void render_ui(graphics *graphics, game_state *state)
+{
+    char message[512];
+    int mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+
+    // Level
+    sprintf(message, "Level %d", get_level(state));
+    render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET);
+
+    // Score
+    sprintf(message, "Score %d", state->score);
+    render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 2);
+
+    // Horizontal line
+    render_line(graphics, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 3, 375);
+
+    // Buttons
+    int place_x = GRID_WIDTH + GRID_X_OFFSET * 2;
+    int place_y = GRID_Y_OFFSET * 4;
+    int s = is_in_area(place_x, place_y, BTN_SPRITE_WIDTH, BTN_SPRITE_HEIGHT, mouse_x, mouse_y) ? PAUSE_MO : PAUSE;
+    render_image(graphics, state->images[BUTTON_SHEET],
+                 place_x, place_y, state->btn_sprites[s]);
+
+    place_x = GRID_WIDTH + BTN_SPRITE_WIDTH + GRID_X_OFFSET * 3;
+    s = is_in_area(place_x, place_y, BTN_SPRITE_WIDTH, BTN_SPRITE_HEIGHT, mouse_x, mouse_y) ? RESTART_MO : RESTART;
+    render_image(graphics, state->images[BUTTON_SHEET],
+                 place_x, place_y, state->btn_sprites[s]);
+
+    // Game over
+    if (!state->running)
+    {
+        render_image(graphics, state->images[GAME_OVER], GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 5, 0);
     }
 }
 
@@ -214,14 +273,6 @@ static int remove_full_row(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], int row)
 }
 
 /**
- * Gets the current level from the game state
- */
-static int get_level(game_state *state)
-{
-    return ((INITIAL_SPEED - state->speed) / 10) + 1;
-}
-
-/**
  * Original Nintendo scoring system.
  */
 static void update_score(game_state *state, int num_rows)
@@ -273,11 +324,39 @@ static void reset_shape(shape *shape)
 
 static void init_game(game_state *state)
 {
-    state->loop_count = 0;
     state->num_pieces = 1;
     state->running = 1;
-    state->score = 0;
     state->speed = INITIAL_SPEED;
+}
+
+static int load_images(game_state *state, graphics *graphics)
+{
+    // Load button sprite sheet
+    state->images[BUTTON_SHEET] = load_image(graphics, "assets/tetris_button_sheet.png");
+    if (state->images[BUTTON_SHEET] < 0)
+    {
+        return 1;
+    }
+
+    // Define sprites
+    state->btn_sprites = calloc(4, sizeof(SDL_Rect*));
+    for (int i = 0; i <= RESTART_MO; i++)
+    {
+        state->btn_sprites[i] = calloc(1, sizeof(SDL_Rect));
+        state->btn_sprites[i]->x = 0;
+        state->btn_sprites[i]->y = BTN_SPRITE_HEIGHT * i;
+        state->btn_sprites[i]->w = BTN_SPRITE_WIDTH;
+        state->btn_sprites[i]->h = BTN_SPRITE_HEIGHT;
+    }
+
+    // Load game over image
+    state->images[GAME_OVER] = load_image(graphics, "assets/tetris_go.png");
+    if (state->images[GAME_OVER] < 0)
+    {
+        return 1;
+    }
+
+    return 0;
 }
 
 /**
@@ -314,6 +393,16 @@ static int check_force_down(game_state *state)
     return 0;
 }
 
+static void cleanup(game_state *state)
+{
+    for (int i = 0; i <= RESTART_MO; i++)
+    {
+        free(state->btn_sprites[i]);
+    }
+
+    free(state->btn_sprites);
+}
+
 /**
  * End of life for a shape. Add it to the grid and select a new one.
  * Check for end of game and the level of difficulty.
@@ -344,11 +433,15 @@ int main()
 
     int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH] = { 0 };
     shape shape;
-    game_state state;
+    game_state state = { 0 };
     SDL_Event e;
     uint32_t start_ms;
     int quit = 0;
-    char message[512];
+
+    if (load_images(&state, graphics))
+    {
+        return 1;
+    }
 
     init_game(&state);
     reset_shape(&shape);
@@ -387,12 +480,7 @@ int main()
 
         render_grid(graphics, grid);
         render_shape_cells(graphics, &shape);
-
-        sprintf(message, "Level %d", get_level(&state));
-        render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET);
-
-        sprintf(message, "Score %d", state.score);
-        render_message(graphics, message, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 2);
+        render_ui(graphics, &state);
 
         commit_to_screen(graphics);
 
@@ -405,5 +493,6 @@ int main()
     }
 
     close_graphics(graphics);
+    cleanup(&state);
     return 0;
 }
