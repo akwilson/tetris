@@ -2,6 +2,10 @@
 #include <time.h>
 #include <SDL2/SDL.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include "tetronimoes.h"
 #include "graphics.h"
 
@@ -45,6 +49,20 @@ typedef struct game_state
     int images[2];
     SDL_Rect **btn_sprites;
 } game_state;
+
+/**
+ * Required for emscripten compatability.
+ */
+typedef struct game_data
+{
+    graphics *graphics;
+    int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH];
+    shape shape;
+    game_state state;
+    SDL_Event e;
+    uint32_t start_ms;
+    int quit;
+} game_data;
 
 // Macros to convert pixel positions to positions in the grid array
 #define CONVERT_TO_X_GRID(x) (x - GRID_X_OFFSET) / CELL_SIZE
@@ -401,6 +419,10 @@ static void cleanup(game_state *state)
     }
 
     free(state->btn_sprites);
+
+#ifdef __EMSCRIPTEN__
+    emscripten_cancel_main_loop();
+#endif
 }
 
 /**
@@ -421,78 +443,81 @@ static void end_shape(game_state *state, int grid[GRID_CELL_HEIGHT][GRID_CELL_WI
     check_level(state);
 }
 
+static void main_loop(game_data *data)
+{
+    data->start_ms = SDL_GetTicks();
+    new_frame(&data->state);
+
+    while (SDL_PollEvent(&data->e))
+    {
+        switch (data->e.type)
+        {
+        case SDL_QUIT:
+            data->quit = 1;
+            break;
+        case SDL_KEYDOWN:
+            handle_keys(data->e.key.keysym.sym, &data->shape, data->grid, &data->state);
+            break;
+        }
+    }
+
+    if (check_force_down(&data->state))
+    {
+        if (is_position_valid(data->shape.tetronimo, data->shape.x, data->shape.y + CELL_SIZE, data->grid))
+        {
+            data->shape.y += CELL_SIZE;
+        }
+        else
+        {
+            end_shape(&data->state, data->grid, &data->shape);
+        }
+    }
+
+    clear_frame(data->graphics);
+
+    render_grid(data->graphics, data->grid);
+    render_shape_cells(data->graphics, &data->shape);
+    render_ui(data->graphics, &data->state);
+
+    commit_to_screen(data->graphics);
+
+    // Limit FPS to avoid maxing out CPU
+    int frameTicks = SDL_GetTicks() - data->start_ms;
+    if (frameTicks < SCREEN_TICKS_PER_FRAME)
+    {
+        SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
+    }
+}
+
 int main()
 {
-    graphics *graphics = init_graphics();
-    if (!graphics)
+    game_data game_data = { 0 };
+    game_data.graphics = init_graphics();
+    if (!game_data.graphics)
     {
         return 1;
     }
 
     srand(time(0));
 
-    int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH] = { 0 };
-    shape shape;
-    game_state state = { 0 };
-    SDL_Event e;
-    uint32_t start_ms;
-    int quit = 0;
-
-    if (load_images(&state, graphics))
+    if (load_images(&game_data.state, game_data.graphics))
     {
         return 1;
     }
 
-    init_game(&state);
-    reset_shape(&shape);
+    init_game(&game_data.state);
+    reset_shape(&game_data.shape);
 
-    while (!quit)
+    while (!game_data.quit)
     {
-        start_ms = SDL_GetTicks();
-        new_frame(&state);
-
-        while (SDL_PollEvent(&e))
-        {
-            switch (e.type)
-            {
-            case SDL_QUIT:
-                quit = 1;
-                break;
-            case SDL_KEYDOWN:
-                handle_keys(e.key.keysym.sym, &shape, grid, &state);
-                break;
-            }
-        }
-
-        if (check_force_down(&state))
-        {
-            if (is_position_valid(shape.tetronimo, shape.x, shape.y + CELL_SIZE, grid))
-            {
-                shape.y += CELL_SIZE;
-            }
-            else
-            {
-                end_shape(&state, grid, &shape);
-            }
-        }
-
-        clear_frame(graphics);
-
-        render_grid(graphics, grid);
-        render_shape_cells(graphics, &shape);
-        render_ui(graphics, &state);
-
-        commit_to_screen(graphics);
-
-        // Limit FPS to avoid maxing out CPU
-        int frameTicks = SDL_GetTicks() - start_ms;
-        if (frameTicks < SCREEN_TICKS_PER_FRAME)
-        {
-            SDL_Delay(SCREEN_TICKS_PER_FRAME - frameTicks);
-        }
+#ifdef __EMSCRIPTEN__
+        emscripten_set_main_loop_arg(main_loop, &game_data, 0, 1);
+#else
+        main_loop(&game_data);
+#endif
     }
 
-    close_graphics(graphics);
-    cleanup(&state);
+    close_graphics(game_data.graphics);
+    cleanup(&game_data.state);
     return 0;
 }
