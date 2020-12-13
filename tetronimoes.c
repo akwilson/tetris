@@ -3,9 +3,12 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "tetronimoes.h"
 
-tetronimo tetronimoes[NUM_TETRONIMOES] = {
+#define NUM_TETRONIMOES 7
+
+static tetronimo tetronimoes[NUM_TETRONIMOES] = {
     {
         {
             { 0, 1, 0, 0 },
@@ -109,6 +112,11 @@ static void reverse_cols(int matrix[MATRIX_SIZE][MATRIX_SIZE])
             swap(&matrix[y][x], &matrix[MATRIX_SIZE - 1 - y][x]);
         }
     }
+}
+
+tetronimo *get_random_tetronimo()
+{
+    return &tetronimoes[rand() % NUM_TETRONIMOES];
 }
 
 void rotate(tetronimo *tetronimo, rotation rotation)

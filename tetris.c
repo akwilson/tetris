@@ -329,7 +329,7 @@ static void add_shape_to_grid(int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], shape
  */
 static void reset_shape(shape *shape)
 {
-    shape->tetronimo = &tetronimoes[rand() % NUM_TETRONIMOES];
+    shape->tetronimo = get_random_tetronimo();
     if (shape->tetronimo->direction != NONE && shape->tetronimo->direction != UP)
     {
         rotate(shape->tetronimo, 4 - shape->tetronimo->direction);
@@ -443,8 +443,9 @@ static void end_shape(game_state *state, int grid[GRID_CELL_HEIGHT][GRID_CELL_WI
     check_level(state);
 }
 
-static void main_loop(game_data *data)
+static void main_loop(void *g_data)
 {
+    game_data *data = g_data;
     data->start_ms = SDL_GetTicks();
     new_frame(&data->state);
 

@@ -5,7 +5,6 @@
 
 // tetronimoes are defined in a 4 X 4 matrix
 #define MATRIX_SIZE 4
-#define NUM_TETRONIMOES 7
 
 /**
  * The direction the tetronimo is facing
@@ -39,9 +38,9 @@ typedef struct tetronimo
 } tetronimo;
 
 /**
- * Definitions of the available tetronimoes
+ * Selects a random tetronimo from those available.
  */
-tetronimo tetronimoes[NUM_TETRONIMOES];
+tetronimo *get_random_tetronimo();
 
 /**
  * Rotates a tetronimo in place and maintains a record if its direction
