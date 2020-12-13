@@ -9,4 +9,4 @@ WASM1_SRCS = $(SRCS)
 WASM1_ASSETS = assets
 WASM1_USE_SDL2 = Y
 
-include lib/simplified.mk
+include lib/simplified-make/simplified.mk
