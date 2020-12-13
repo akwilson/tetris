@@ -1,4 +1,5 @@
 = Tetris in C using SDL2
+[![tetris-screenshot.png](https://i.postimg.cc/rwMKQQFJ/tetris-screenshot.png)](https://postimg.cc/vc2Ym7ng)
 
 Builds and runs on MacOS and Web Assembly, but with a bit of effort should run elsewhere too.
 
