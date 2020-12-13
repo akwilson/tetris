@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+		<title>Tetris</title>
+        <style type="text/css">
+            body {
+                font-family: arial;
+                background-color: #2E3440;
+                text-align: center;
+                color: #ECEFF4;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Tetris</h1>
+        <div>
+            <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+        </div>
+        <script type="text/javascript">
+			var Module = {
+				print: (function() {
+					return function(text) {
+						console.log(text);
+					};
+				})(),
+				printErr: function(text) {
+                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+                    console.error(text);
+				},				
+				canvas: (function() {
+					var canvas = document.getElementById('canvas');
+					return canvas;
+				})()
+			};
+		</script>
+        <script async type="text/javascript" src="tetris.js"></script>
+    </body>
+</html>
