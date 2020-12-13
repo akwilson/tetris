@@ -19,4 +19,4 @@ $ make
 
 Run the native build with `./build/tetris` or the Web Assembly build using the `index.html` file through a web server. E.g.
 [source,bash]
-python -m SimpleHTTPServer 8080
+$ python -m SimpleHTTPServer 8080
