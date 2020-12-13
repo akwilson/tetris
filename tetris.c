@@ -35,6 +35,7 @@ typedef struct shape
 
 enum images { BUTTON_SHEET, GAME_OVER };
 enum sprites { PAUSE, RESTART, PAUSE_MO, RESTART_MO };
+typedef enum game_action { RUNNING, PAUSED, STOPPED } game_action;
 
 /**
  * Variables to control the state of the game
@@ -43,12 +44,18 @@ typedef struct game_state
 {
     int speed;
     int loop_count;
-    int running;
+    game_action action;
     int num_pieces;
     int score;
     int images[2];
     SDL_Rect **btn_sprites;
 } game_state;
+
+typedef struct button
+{
+    int x;
+    int y;
+} button;
 
 /**
  * Required for emscripten compatability.
@@ -62,6 +69,8 @@ typedef struct game_data
     SDL_Event e;
     uint32_t start_ms;
     int quit;
+    button pause;
+    button restart;
 } game_data;
 
 // Macros to convert pixel positions to positions in the grid array
@@ -125,10 +134,26 @@ static int is_in_area(int area_x, int area_y, int width, int height, int x, int 
     return (x >= area_x && x <= area_x + width && y >= area_y && y <= area_y + height);
 }
 
+static void init_ui(button *pause, button *restart)
+{
+    pause->x = GRID_WIDTH + GRID_X_OFFSET * 2;
+    pause->y = GRID_Y_OFFSET * 4;
+
+    restart->x = GRID_WIDTH + BTN_SPRITE_WIDTH + GRID_X_OFFSET * 3;
+    restart->y = GRID_Y_OFFSET * 4;
+}
+
+static int is_button_mouse_over(button *button)
+{
+    int mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+    return is_in_area(button->x, button->y, BTN_SPRITE_WIDTH, BTN_SPRITE_HEIGHT, mouse_x, mouse_y);
+}
+
 /**
  * Render game status information -- score, game over message, buttons.
  */
-static void render_ui(graphics *graphics, game_state *state)
+static void render_ui(graphics *graphics, game_state *state, button *pause, button *restart)
 {
     char message[512];
     int mouse_x, mouse_y;
@@ -146,19 +171,13 @@ static void render_ui(graphics *graphics, game_state *state)
     render_line(graphics, GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 3, 375);
 
     // Buttons
-    int place_x = GRID_WIDTH + GRID_X_OFFSET * 2;
-    int place_y = GRID_Y_OFFSET * 4;
-    int s = is_in_area(place_x, place_y, BTN_SPRITE_WIDTH, BTN_SPRITE_HEIGHT, mouse_x, mouse_y) ? PAUSE_MO : PAUSE;
-    render_image(graphics, state->images[BUTTON_SHEET],
-                 place_x, place_y, state->btn_sprites[s]);
-
-    place_x = GRID_WIDTH + BTN_SPRITE_WIDTH + GRID_X_OFFSET * 3;
-    s = is_in_area(place_x, place_y, BTN_SPRITE_WIDTH, BTN_SPRITE_HEIGHT, mouse_x, mouse_y) ? RESTART_MO : RESTART;
-    render_image(graphics, state->images[BUTTON_SHEET],
-                 place_x, place_y, state->btn_sprites[s]);
+    render_image(graphics, state->images[BUTTON_SHEET], pause->x, pause->y,
+                 state->btn_sprites[is_button_mouse_over(pause) ? PAUSE_MO : PAUSE]);
+    render_image(graphics, state->images[BUTTON_SHEET], restart->x, restart->y,
+                 state->btn_sprites[is_button_mouse_over(restart) ? RESTART_MO : RESTART]);
 
     // Game over
-    if (!state->running)
+    if (state->action == STOPPED)
     {
         render_image(graphics, state->images[GAME_OVER], GRID_WIDTH + GRID_X_OFFSET * 2, GRID_Y_OFFSET * 5, 0);
     }
@@ -218,7 +237,7 @@ static int is_position_valid(tetronimo *tetronimo, int new_x, int new_y, int gri
  */
 static void handle_keys(SDL_Keycode key_code, shape *shape, int grid[GRID_CELL_HEIGHT][GRID_CELL_WIDTH], game_state *state)
 {
-    if (!state->running)
+    if (state->action != RUNNING)
     {
         return;
     }
@@ -343,8 +362,9 @@ static void reset_shape(shape *shape)
 static void init_game(game_state *state)
 {
     state->num_pieces = 1;
-    state->running = 1;
+    state->action = RUNNING;
     state->speed = INITIAL_SPEED;
+    state->score = 0;
 }
 
 static int load_images(game_state *state, graphics *graphics)
@@ -382,7 +402,7 @@ static int load_images(game_state *state, graphics *graphics)
  */
 static void new_frame(game_state *state)
 {
-    state->loop_count += state->running;
+    state->loop_count += state->action == RUNNING ? 1 : 0;
 }
 
 /**
@@ -437,10 +457,37 @@ static void end_shape(game_state *state, int grid[GRID_CELL_HEIGHT][GRID_CELL_WI
     if (!is_position_valid(shape->tetronimo, shape->x, shape->y, grid))
     {
         shape->color = RED;
-        state->running = 0;
+        state->action = STOPPED;
     }
 
     check_level(state);
+}
+
+/**
+ * Handles mouse button click events. Pauses or restarts the game.
+ * 
+ * @param needs pretty much everything to handle restarts
+ */
+static void handle_mouse(game_data *data)
+{
+    int mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+    if (is_button_mouse_over(&data->pause) && (&data->state)->action != STOPPED)
+    {
+        (&data->state)->action = (&data->state)->action == RUNNING ? PAUSED : RUNNING;
+    }
+    else if (is_button_mouse_over(&data->restart))
+    {
+        init_game(&data->state);
+        reset_shape(&data->shape);
+        for (int i = 0; i < GRID_CELL_HEIGHT; i++)
+        {
+            for (int j = 0; j < GRID_CELL_WIDTH; j++)
+            {
+                data->grid[i][j] = 0;
+            }
+        }
+    }
 }
 
 static void main_loop(void *g_data)
@@ -455,6 +502,9 @@ static void main_loop(void *g_data)
         {
         case SDL_QUIT:
             data->quit = 1;
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+            handle_mouse(data);
             break;
         case SDL_KEYDOWN:
             handle_keys(data->e.key.keysym.sym, &data->shape, data->grid, &data->state);
@@ -478,7 +528,7 @@ static void main_loop(void *g_data)
 
     render_grid(data->graphics, data->grid);
     render_shape_cells(data->graphics, &data->shape);
-    render_ui(data->graphics, &data->state);
+    render_ui(data->graphics, &data->state, &data->pause, &data->restart);
 
     commit_to_screen(data->graphics);
 
@@ -505,6 +555,8 @@ int main()
     {
         return 1;
     }
+
+    init_ui(&game_data.pause, &game_data.restart);
 
     init_game(&game_data.state);
     reset_shape(&game_data.shape);
