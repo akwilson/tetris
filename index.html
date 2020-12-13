@@ -31,9 +31,12 @@
 				canvas: (function() {
 					var canvas = document.getElementById('canvas');
 					return canvas;
-				})()
+                })(),
+                locateFile: url => {
+                    return 'build/' + url;
+                }
 			};
 		</script>
-        <script async type="text/javascript" src="tetris.js"></script>
+        <script async type="text/javascript" src="build/tetris.js"></script>
     </body>
 </html>
