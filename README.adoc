@@ -1,12 +1,22 @@
-= Tetris
+= Tetris in C using SDL2
 
-Tetris in C using SDL2. Tested on Mac OS but there's no reason it shouldn't work elsewhere.
+Builds and runs on MacOS and Web Assembly, but with a bit of effort should run elsewhere too.
 
 == Build it...
-Install SDL2 via Homebrew and run make
+Install the Xcode command line tools
+[source,bash]
+xcode-select --install
 
+Install
+https://emscripten.org/docs/getting_started/downloads.html[emscripten].
+
+Install SDL2 via Homebrew and run make
 [source,bash]
 ----
 $ brew install sdl2 sdl2_image sdl2_ttf
 $ make
 ----
+
+Run the native build with `./build/tetris` or the Web Assembly build using the `index.html` file through a web server. E.g.
+[source,bash]
+python -m SimpleHTTPServer 8080
