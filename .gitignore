@@ -1,0 +1,11 @@
+.vscode/
+assets/
+lib/
+*.swp
+*.c
+*.h
+.DS_Store
+.gitmodules
+LICENSE
+Makefile
+README.adoc
